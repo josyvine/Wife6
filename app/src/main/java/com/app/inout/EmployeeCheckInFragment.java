@@ -1,9 +1,16 @@
 package com.inout.app;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,6 +37,7 @@ import com.inout.app.utils.TimeUtils;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +60,10 @@ public class EmployeeCheckInFragment extends Fragment {
     private User currentUser;
     private CompanyConfig assignedLocation;
     private AttendanceRecord todayRecord;
+
+    // Time checker thread variables to avoid stagnant UI gates [2]
+    private final Handler timeHandler = new Handler(Looper.getMainLooper());
+    private Runnable timeRunnable;
 
     // Action Constants
     private static final int ACTION_IN = 1;
@@ -84,6 +96,15 @@ public class EmployeeCheckInFragment extends Fragment {
         mAdView = binding.adViewCheckin;
         AdRequest adRequest = new AdRequest.Builder().build();
         mAdView.loadAd(adRequest);
+
+        // Initialize local time ticker handler to recheck shift starts dynamically [2]
+        timeRunnable = new Runnable() {
+            @Override
+            public void run() {
+                updateUIBasedOnStatus();
+                timeHandler.postDelayed(this, 30000); // Check local device time every 30 seconds
+            }
+        };
     }
 
     private void updateButtonState(boolean in, boolean transit, boolean out) {
@@ -111,6 +132,15 @@ public class EmployeeCheckInFragment extends Fragment {
                     binding.tvEmployeeName.setVisibility(View.VISIBLE);
                     binding.tvEmployeeId.setText(currentUser.getEmployeeId() != null ? currentUser.getEmployeeId() : "Pending ID");
 
+                    // Bind shift times dynamically below action buttons [2]
+                    String startTime = currentUser.getShiftStartTime() != null ? currentUser.getShiftStartTime() : "N/A";
+                    String endTime = currentUser.getShiftEndTime() != null ? currentUser.getShiftEndTime() : "N/A";
+                    binding.tvShiftStartHint.setText("Shift: " + startTime);
+                    binding.tvShiftEndHint.setText("Shift: " + endTime);
+
+                    // Proactively schedule exact alarm notification 1 minute before shift starts [2]
+                    scheduleNearTimeNotification(startTime);
+
                     String locId = currentUser.getAssignedLocationId();
                     
                     if (locId != null && !locId.isEmpty()) {
@@ -124,6 +154,60 @@ public class EmployeeCheckInFragment extends Fragment {
                 }
             }
         });
+    }
+
+    /**
+     * Helper to schedule system level exact alarm exactly 1 minute before the shift starts [2].
+     */
+    private void scheduleNearTimeNotification(String shiftStartStr) {
+        if (shiftStartStr == null || shiftStartStr.isEmpty() || "N/A".equals(shiftStartStr)) return;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a", Locale.US);
+            Date parsedDate = sdf.parse(shiftStartStr);
+            if (parsedDate == null) return;
+
+            Calendar shiftCal = Calendar.getInstance();
+            Calendar current = Calendar.getInstance();
+
+            Calendar targetCal = Calendar.getInstance();
+            targetCal.setTime(parsedDate);
+
+            shiftCal.set(Calendar.HOUR_OF_DAY, targetCal.get(Calendar.HOUR_OF_DAY));
+            shiftCal.set(Calendar.MINUTE, targetCal.get(Calendar.MINUTE));
+            shiftCal.set(Calendar.SECOND, 0);
+            shiftCal.set(Calendar.MILLISECOND, 0);
+
+            // Shift alarm scheduled exactly 1 minute before check-in time [2]
+            shiftCal.add(Calendar.MINUTE, -1);
+
+            // If the calculated alarm has already passed for today, push it forward to tomorrow
+            if (shiftCal.before(current)) {
+                shiftCal.add(Calendar.DAY_OF_YEAR, 1);
+            }
+
+            AlarmManager alarmManager = (AlarmManager) requireContext().getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(requireContext(), CheckInAlarmReceiver.class);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                    requireContext(),
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            if (alarmManager != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, shiftCal.getTimeInMillis(), pendingIntent);
+                    } else {
+                        alarmManager.set(AlarmManager.RTC_WAKEUP, shiftCal.getTimeInMillis(), pendingIntent);
+                    }
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, shiftCal.getTimeInMillis(), pendingIntent);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to schedule near-time check-in alarm", e);
+        }
     }
 
     private void fetchAssignedLocationDetails(String locId) {
@@ -408,10 +492,12 @@ public class EmployeeCheckInFragment extends Fragment {
     public void onResume() {
         super.onResume();
         if (mAdView != null) mAdView.resume();
+        timeHandler.post(timeRunnable); // Start active timer loop when screen resumes [2]
     }
 
     @Override
     public void onPause() {
+        timeHandler.removeCallbacks(timeRunnable); // Stop background ticks to prevent memory leaks [2]
         if (mAdView != null) mAdView.pause();
         super.onPause();
     }
