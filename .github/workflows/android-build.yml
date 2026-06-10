@@ -30,6 +30,16 @@ jobs:
             -alias "${{ secrets.KEY_ALIAS }}" \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}"
 
+      # Install a global Gradle distribution on the virtual runner machine
+      - name: Install System Gradle
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gradle
+
+      # Generate a fresh, uncorrupted Gradle wrapper binary on-the-fly
+      - name: Regenerate Gradle Wrapper
+        run: gradle wrapper
+
       # Grant execute permission to the Gradle wrapper script to resolve permission denied error
       - name: Make Gradlew Executable
         run: chmod +x gradlew
