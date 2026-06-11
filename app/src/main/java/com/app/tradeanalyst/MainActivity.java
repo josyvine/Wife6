@@ -80,6 +80,9 @@ public class MainActivity extends AppCompatActivity implements VoiceAssistantBot
     private final Random mRandom = new Random();
     private boolean mIsSimulationMode = false;
     private boolean mIsLoadingHistory = false;
+    
+    // Live session connection state tracker [1]
+    private boolean mIsLiveSessionActive = false;
 
     // Simulated market news
     private List<FeedItem> mNewsList = new ArrayList<>();
@@ -1095,6 +1098,7 @@ public class MainActivity extends AppCompatActivity implements VoiceAssistantBot
 
     @Override
     public void onLiveWebSocketConnected() {
+        mIsLiveSessionActive = true; // State Sync [1]
         runOnUiThread(() -> {
             if (mActiveBottomSheet != null) {
                 mActiveBottomSheet.updateStatusText("Connected to Gemini Live Model");
@@ -1104,6 +1108,7 @@ public class MainActivity extends AppCompatActivity implements VoiceAssistantBot
 
     @Override
     public void onLiveWebSocketDisconnected(String reason) {
+        mIsLiveSessionActive = false; // State Sync [1]
         runOnUiThread(() -> {
             if (mActiveBottomSheet != null) {
                 mActiveBottomSheet.updateStatusText("Disconnected: " + reason);
@@ -1236,6 +1241,11 @@ public class MainActivity extends AppCompatActivity implements VoiceAssistantBot
     @Override
     public void onRefreshRequired() {
         refreshFeedList();
+    }
+    
+    // Public getter to expose the background connection status to sheet fragments [1]
+    public boolean isLiveSessionActive() {
+        return mIsLiveSessionActive;
     }
 
     @Override
