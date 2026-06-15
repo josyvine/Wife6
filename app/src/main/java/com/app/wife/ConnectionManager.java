@@ -74,23 +74,30 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
             isConnected = true;
             isHost = info.isGroupOwner;
             
+            // Critical Fix: BOTH Host and Client must start background socket servers
+            // to listen for incoming bidirectional message and calling requests.
+            startServers();
+            
             if (isHost) {
                 Log.d(TAG, "Device is Group Owner. Starting SocketServers...");
+                WifeLogger.log(TAG, "P2P connection established. This device is the Group Owner (Host). Server sockets started.");
                 peerIpAddress = ""; // Will be updated when Client connects to Control Server
-                startServers();
             } else {
                 Log.d(TAG, "Device is Client. Connecting to Host: " + info.groupOwnerAddress.getHostAddress());
+                WifeLogger.log(TAG, "P2P connection established. This device is the Client. Server sockets started. Connecting to Host: " + info.groupOwnerAddress.getHostAddress());
                 peerIpAddress = info.groupOwnerAddress.getHostAddress();
                 startClient(info.groupOwnerAddress);
             }
         } else {
             Log.d(TAG, "Connection lost, tearing down active sockets.");
+            WifeLogger.log(TAG, "P2P Connection lost. Tearing down active sockets.");
             teardown();
         }
         notifyStateChanged();
     }
 
     private synchronized void startServers() {
+        WifeLogger.log(TAG, "startServers() invoked. Initializing SocketServer threads...");
         if (socketServer != null) {
             socketServer.stop();
         }
@@ -99,6 +106,7 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
     }
 
     private synchronized void startClient(InetAddress hostAddress) {
+        WifeLogger.log(TAG, "startClient() invoked. Initializing SocketClient targeting Host: " + hostAddress.getHostAddress());
         if (socketClient != null) {
             socketClient.close();
         }
@@ -107,14 +115,17 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
     }
 
     public synchronized void updatePeerIpFromAccept(String acceptedIp) {
-        if (isHost && (peerIpAddress == null || peerIpAddress.isEmpty() || !peerIpAddress.equals(acceptedIp))) {
+        WifeLogger.log(TAG, "updatePeerIpFromAccept called with IP: " + acceptedIp + ". Current cached Peer IP: " + peerIpAddress);
+        if (peerIpAddress == null || peerIpAddress.isEmpty() || !peerIpAddress.equals(acceptedIp)) {
             Log.d(TAG, "Host recorded Client IP: " + acceptedIp);
+            WifeLogger.log(TAG, "Updating Peer IP Address reference to accepted client socket IP: " + acceptedIp);
             this.peerIpAddress = acceptedIp;
             notifyStateChanged();
         }
     }
 
     public synchronized void teardown() {
+        WifeLogger.log(TAG, "teardown() invoked. Cleared connection state variables.");
         isConnected = false;
         peerIpAddress = "";
         isHost = false;
@@ -136,6 +147,7 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
             synchronized (ConnectionManager.this) {
                 targets = new ArrayList<>(statusListeners);
             }
+            WifeLogger.log(TAG, "Dispatching connection state change. Connected: " + isConnected + ", Peer IP: " + peerIpAddress + ", Is Host: " + isHost);
             for (ConnectionStatusListener listener : targets) {
                 listener.onConnectionStateChanged(isConnected, peerIpAddress, isHost);
             }
