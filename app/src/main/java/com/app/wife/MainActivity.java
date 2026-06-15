@@ -72,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             if (connectionManager.isConnected()) {
                 Intent callIntent = new Intent(MainActivity.this, VoiceCallActivity.class);
                 callIntent.putExtra("IS_INBOUND", false);
+                callIntent.putExtra(Constants.EXTRA_PEER_IP, connectionManager.getPeerIpAddress());
                 startActivity(callIntent);
             } else {
                 Toast.makeText(this, "Connect to a nearby device to place a call.", Toast.LENGTH_SHORT).show();
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             if (connectionManager.isConnected()) {
                 Intent callIntent = new Intent(MainActivity.this, VideoCallActivity.class);
                 callIntent.putExtra("IS_INBOUND", false);
+                callIntent.putExtra(Constants.EXTRA_PEER_IP, connectionManager.getPeerIpAddress());
                 startActivity(callIntent);
             } else {
                 Toast.makeText(this, "Connect to a nearby device to place a video call.", Toast.LENGTH_SHORT).show();
