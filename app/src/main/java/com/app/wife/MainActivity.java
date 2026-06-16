@@ -1,6 +1,8 @@
 package com.wife.app;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.view.View;
@@ -41,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     private void setupMenuClickListeners() {
         // Toggle slide-out menu drawer
         binding.toolbarMain.setNavigationOnClickListener(v -> {
+            WifeLogger.log(TAG, "Navigation menu hamburger button clicked. Toggling side drawer layout.");
             if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 binding.drawerLayout.closeDrawer(GravityCompat.START);
             } else {
@@ -121,6 +124,35 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         super.onResume();
         WifeLogger.log(TAG, "onResume() called. Registering MainActivity to ConnectionManager status listener.");
         connectionManager.registerStatusListener(this);
+
+        // Bind user profile info and unread notification badge from preferences
+        try {
+            SharedPreferences prefs = getSharedPreferences("WifeSettings", MODE_PRIVATE);
+            
+            // 1. Update Username Display inside Drawer
+            String customName = prefs.getString("custom_alias", Utils.getDeviceModel());
+            binding.tvDrawerProfileName.setText(customName);
+
+            // 2. Update Profile Photo inside Drawer
+            Bitmap localProfilePhoto = ProfileImageManager.getLocalProfileImage(this);
+            if (localProfilePhoto != null) {
+                binding.ivDrawerProfilePhoto.setImageBitmap(localProfilePhoto);
+            } else {
+                binding.ivDrawerProfilePhoto.setImageResource(android.R.drawable.sym_def_app_icon);
+            }
+
+            // 3. Update Unread Chat Notification Badge Count
+            int unreadCount = prefs.getInt("unread_count", 0);
+            WifeLogger.log(TAG, "Evaluating unread notification badge state. Unread Count: " + unreadCount);
+            if (unreadCount > 0) {
+                binding.tvUnreadBadge.setVisibility(View.VISIBLE);
+                binding.tvUnreadBadge.setText(String.valueOf(unreadCount));
+            } else {
+                binding.tvUnreadBadge.setVisibility(View.GONE);
+            }
+        } catch (Exception e) {
+            WifeLogger.log(TAG, "Failed loading profile or unread badge parameters: " + e.getMessage(), e);
+        }
     }
 
     @Override
