@@ -19,28 +19,49 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:paddingHorizontal="14dp"
             android:paddingVertical="8dp">
 
-            <TextView
-                android:id="@+id/tvMessageText"
+            <!-- Message Text Container -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:maxWidth="260dp"
-                android:text="Received Message Text"
-                android:textColor="#333333"
-                android:textSize="15sp" />
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvMessageTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginTop="2dp"
-                android:textColor="#888888"
-                android:textSize="10sp"
-                android:text="14:02" />
+                <TextView
+                    android:id="@+id/tvMessageText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="260dp"
+                    android:text="Received Message Text"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tvMessageTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="2dp"
+                    android:textColor="#888888"
+                    android:textSize="10sp"
+                    android:text="14:02" />
+
+            </LinearLayout>
+
+            <!-- Tiny Save Icon for Received Attachments -->
+            <ImageView
+                android:id="@+id/ivSaveAttachment"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:padding="4dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/save_24px"
+                android:visibility="gone"
+                android:contentDescription="Save received attachment" />
 
         </LinearLayout>
 
