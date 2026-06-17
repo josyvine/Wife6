@@ -100,6 +100,41 @@ public class CallSignalingManager {
         });
     }
 
+    // Overloaded method to support sending target timestamps for unsend signals
+    public void sendSignal(final String peerIp, final String type, final long timestamp) {
+        WifeLogger.log(TAG, "sendSignal() with timestamp invoked. Queuing outbound control signal: " + type + " | Target IP: " + peerIp + " | Timestamp: " + timestamp);
+        executorService.execute(() -> {
+            WifeLogger.log(TAG, "Executing outbound signaling socket task on background worker thread.");
+            try (Socket socket = new Socket(peerIp, Constants.OFF_PORT_CONTROL);
+                 OutputStream os = socket.getOutputStream();
+                 PrintWriter pw = new PrintWriter(os, true)) {
+
+                WifeLogger.log(TAG, "Signaling socket connected successfully with " + peerIp + " on control Port: " + Constants.OFF_PORT_CONTROL);
+
+                SharedPreferences prefs = context.getSharedPreferences("WifeSettings", Context.MODE_PRIVATE);
+                String customName = prefs.getString("custom_alias", Utils.getDeviceModel());
+
+                JsonObject json = new JsonObject();
+                json.addProperty("type", type);
+                json.addProperty("sender", Utils.getDeviceId(context));
+                json.addProperty("senderName", customName);
+                json.addProperty("timestamp", timestamp); // Attach the targeted message timestamp
+
+                String payload = json.toString();
+                WifeLogger.log(TAG, "Transmitting finalized signaling payload block. Action: " + type);
+
+                pw.println(payload);
+                pw.flush();
+                Log.d(TAG, "Sent signal: " + type + " with timestamp to IP: " + peerIp);
+                WifeLogger.log(TAG, "Outbound signaling packet with timestamp successfully written and flushed.");
+
+            } catch (Exception e) {
+                Log.e(TAG, "Failed sending signaling packet with timestamp: " + e.getMessage());
+                WifeLogger.log(TAG, "Failed transmitting outbound control signal with timestamp " + type + " to IP " + peerIp + " | Exception: " + e.getMessage(), e);
+            }
+        });
+    }
+
     public void handleReceivedSignal(String action, JsonObject payload, String peerIp) {
         Log.d(TAG, "Handling received signal: " + action + " from peer " + peerIp);
         WifeLogger.log(TAG, "handleReceivedSignal() invoked. Action: " + action + " | Peer IP: " + peerIp);
