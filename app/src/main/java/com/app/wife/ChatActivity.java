@@ -239,8 +239,26 @@ public class ChatActivity extends AppCompatActivity implements ChatManager.Messa
         try {
             voiceNoteFile = File.createTempFile("voice_note_", ".wav", getCacheDir());
             
-            // Fixed: Standardize on standard high-fidelity WAV capture over capture engine
-            AudioCaptureManager.getInstance(this).startFileRecording(voiceNoteFile);
+            // Standardize on high-fidelity WAV capture and wait for completion in background loop callback
+            AudioCaptureManager.getInstance(this).startFileRecording(voiceNoteFile, new AudioCaptureManager.OnRecordingCompleteListener() {
+                @Override
+                public void onRecordingComplete(File outputFile) {
+                    long size = outputFile.length();
+                    WifeLogger.log(TAG, "Recording complete callback fired from capture manager thread. Verified file size: " + size + " bytes");
+                    if (outputFile.exists() && size > 0) {
+                        sendAttachment(Uri.fromFile(outputFile), "[AUDIO]");
+                    } else {
+                        WifeLogger.log(TAG, "WAV capture completed but file is empty or was deleted.");
+                        Toast.makeText(ChatActivity.this, "Audio recording failed. Captured file is empty.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onRecordingFailed(String error) {
+                    WifeLogger.log(TAG, "WAV recording failed with error context: " + error);
+                    Toast.makeText(ChatActivity.this, "Audio recording failed: " + error, Toast.LENGTH_SHORT).show();
+                }
+            });
 
             isRecordingVoice = true;
             binding.ivSendVoiceIcon.setImageResource(android.R.drawable.ic_media_pause);
@@ -255,17 +273,13 @@ public class ChatActivity extends AppCompatActivity implements ChatManager.Messa
     }
 
     private void stopVoiceRecording() {
-        // Fixed: Stop capture on standard singleton instance cleanly
+        // Stop capture cleanly, which safely halts and blocks the background thread to write headers
         AudioCaptureManager.getInstance(this).stopCapture();
         isRecordingVoice = false;
         binding.ivSendVoiceIcon.setImageResource(R.drawable.mic_24px);
         binding.etChatMessage.setHint("Message");
         binding.etChatMessage.setEnabled(true);
-
-        if (voiceNoteFile != null && voiceNoteFile.exists() && voiceNoteFile.length() > 0) {
-            WifeLogger.log(TAG, "Voice note recorded successfully. Sending file...");
-            sendAttachment(Uri.fromFile(voiceNoteFile), "[AUDIO]");
-        }
+        // Dispatching sendAttachment is now completely delegated to onRecordingComplete callback
     }
 
     private void sendAttachment(Uri uri, String typePrefix) {
