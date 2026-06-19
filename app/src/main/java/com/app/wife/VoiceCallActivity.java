@@ -264,6 +264,31 @@ public class VoiceCallActivity extends AppCompatActivity implements CallSignalin
                     stopRingtone();
                     WifeLogger.log(TAG, "Signal matched: ACCEPT. Starting outbound audio stream parameters.");
                     binding.tvVoiceCallState.setText("Connected");
+
+                    // Symmetrical lookup to resolve Glitch 1: Extract the receiver's customized profile name and picture
+                    if (payload != null) {
+                        if (payload.has("senderName")) {
+                            peerName = payload.get("senderName").getAsString();
+                            binding.tvVoicePeerName.setText(peerName);
+                            WifeLogger.log(TAG, "Updated peer display name on caller side to: " + peerName);
+                        }
+                        if (payload.has("profile_photo")) {
+                            String base64Image = payload.get("profile_photo").getAsString();
+                            if (base64Image != null && !base64Image.isEmpty()) {
+                                try {
+                                    byte[] decodedByte = Base64.decode(base64Image, Base64.DEFAULT);
+                                    Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.length);
+                                    if (decodedBitmap != null) {
+                                        binding.ivVoiceAvatar.setImageBitmap(decodedBitmap);
+                                        WifeLogger.log(TAG, "Successfully updated peer avatar on caller side from accept payload.");
+                                    }
+                                } catch (Exception e) {
+                                    WifeLogger.log(TAG, "Failed decoding peer profile photo from accept payload: " + e.getMessage(), e);
+                                }
+                            }
+                        }
+                    }
+
                     // Initiator launches active client stream to peer
                     voiceCallManager.startCall(peerIp);
                     startCallServiceAndTimer();
