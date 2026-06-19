@@ -56,10 +56,16 @@ public class MessageSender {
         executorService.execute(() -> {
             WifeLogger.log(TAG, "Outbound message transmission task started execution on background worker thread.");
             try {
-                // 1. Save locally to Database safely on background thread
-                MessageEntity entity = new MessageEntity(selfId, "peer_device", text, timestamp);
+                // Symmetrical lookup to resolve Glitch 2: Fetch the active peer device hardware ID
+                String activePeerId = ConnectionManager.getInstance(context).getPeerDeviceId();
+                if (activePeerId == null || activePeerId.isEmpty()) {
+                    activePeerId = "peer_device";
+                }
+
+                // 1. Save locally to Database safely on background thread using the resolved peer ID
+                MessageEntity entity = new MessageEntity(selfId, activePeerId, text, timestamp);
                 RoomDatabaseManager.getInstance(context).messageDao().insert(entity);
-                WifeLogger.log(TAG, "Successfully saved sent message locally to SQLite database.");
+                WifeLogger.log(TAG, "Successfully saved sent message locally to SQLite database with Receiver: " + activePeerId);
 
                 // 2. Transmit to Peer
                 WifeLogger.log(TAG, "Attempting outbound socket connection to " + peerIp + " on text communication port: " + Constants.OFF_PORT_TEXT);
