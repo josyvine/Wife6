@@ -450,6 +450,21 @@ public class GroupCallManager {
         }
     }
 
+    // Dynamic speakerphone audio routing helper [1]
+    public void setSpeakerphoneEnabled(boolean enabled) {
+        WifeLogger.log(TAG, "setSpeakerphoneEnabled() invoked. Value: " + enabled);
+        AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager != null) {
+            try {
+                audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                audioManager.setSpeakerphoneOn(enabled);
+                WifeLogger.log(TAG, "AudioManager speakerphone routed successfully inside GroupCallManager. State: " + enabled);
+            } catch (Exception e) {
+                WifeLogger.log(TAG, "Failed modifying group call audio routing: " + e.getMessage(), e);
+            }
+        }
+    }
+
     public synchronized void endGroupCall() {
         WifeLogger.log(TAG, "endGroupCall() invoked. Teardown active calling channels.");
         teardown();
@@ -494,6 +509,6 @@ public class GroupCallManager {
         peerLastSeen.clear();
         groupCallListener = null;
         
-        WifeLogger.log(TAG, "Decoupled 5-way P2P group call engine teardown complete.");
+        WifeLogger.log(TAG, "Group call engine teardown complete.");
     }
 }
