@@ -83,6 +83,11 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
     public synchronized void setPeerDeviceId(String peerDeviceId) {
         WifeLogger.log(TAG, "setPeerDeviceId called. Tracking peer ID: " + peerDeviceId);
         this.peerDeviceId = peerDeviceId;
+        
+        // For a multi-client group calling host, register this mapped identity to our group peers directory
+        if (isHost && peerIpAddress != null && !peerIpAddress.isEmpty()) {
+            addGroupPeer(peerDeviceId, peerIpAddress);
+        }
     }
 
     // Parallel multi-peer registration mapping for 5-way group calls
@@ -164,6 +169,12 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
             this.peerIpAddress = acceptedIp;
             notifyStateChanged();
         }
+        
+        // Symmetrical mapping: In a multi-client AGO group, we dynamically register 
+        // every accepted Client IP into our Group Peers map so GroupCallManager can target them
+        if (isHost && acceptedIp != null && !acceptedIp.isEmpty()) {
+            addGroupPeer("peer_" + acceptedIp.replace(".", "_"), acceptedIp);
+        }
     }
 
     public synchronized void teardown() {
@@ -186,7 +197,6 @@ public class ConnectionManager implements WiFiDirectManager.ConnectionChangeList
         }
         if (socketClient != null) {
             socketClient.close();
-            socketClient = null;
         }
         notifyStateChanged();
     }
