@@ -96,6 +96,13 @@ public class MessageReceiver implements Runnable {
             return;
         }
 
+        // Parallel decoupled 5-way Group Call Signaling Route
+        if (valType.startsWith("GROUP_CALL_")) {
+            WifeLogger.log(TAG, "Forwarding parallel group calling signal to CallSignalingManager: " + valType);
+            CallSignalingManager.getInstance(context).handleReceivedSignal(valType, json, peerIp);
+            return;
+        }
+
         // Check for Heartbeat
         if ("heartbeat".equals(valType)) {
             WifeLogger.log(TAG, "Control event matched: 'heartbeat'. Relaying payload to HeartbeatManager.");
@@ -235,8 +242,8 @@ public class MessageReceiver implements Runnable {
                     .setDefaults(NotificationCompat.DEFAULT_ALL)
                     .setAutoCancel(true);
 
-            notificationManager.notify(2002, builder.build());
-            WifeLogger.log(TAG, "System chat alert notification dispatched successfully.");
+                    notificationManager.notify(2002, builder.build());
+                    WifeLogger.log(TAG, "System chat alert notification dispatched successfully.");
         } catch (Exception e) {
             WifeLogger.log(TAG, "Failed creating or dispatching system chat alert: " + e.getMessage(), e);
         }
