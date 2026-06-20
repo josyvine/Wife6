@@ -331,6 +331,42 @@
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
+                        <!-- Decoupled 5-way Group Call Card -->
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/btnGroupCall"
+                            android:layout_width="74dp"
+                            android:layout_height="66dp"
+                            android:layout_margin="2dp"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="@color/editorial_background"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?android:attr/selectableItemBackground">
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="4dp">
+                                <ImageView
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:src="@drawable/diversity_3_24px"
+                                    app:tint="@color/editorial_accent" />
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:text="Group Call"
+                                    android:textSize="9sp"
+                                    android:textColor="@color/editorial_primary_dark"
+                                    android:textStyle="bold"
+                                    android:gravity="center" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
                         <!-- Transfer Files Card -->
                         <com.google.android.material.card.MaterialCardView
                             android:id="@+id/btnFileShare"
