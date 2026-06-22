@@ -168,6 +168,13 @@ public class DeviceDiscoveryActivity extends AppCompatActivity implements
             Toast.makeText(this, "P2P Network Group Formed successfully!", Toast.LENGTH_SHORT).show();
             WifeLogger.log(TAG, "Wi-Fi P2P Group formed successfully. Terminating DeviceDiscoveryActivity and returning to main dashboard.");
             finish(); // Go back to Home Dashboard once connected, where detailed status will show
+        } else {
+            // Symmetrical State Clear: Reset local peer tracking lists when connection is not formed
+            WifeLogger.log(TAG, "Connection lost or not formed in discovery view. Resetting local peer lists.");
+            peerList.clear();
+            if (adapter != null) {
+                adapter.notifyDataSetChanged();
+            }
         }
     }
 }
