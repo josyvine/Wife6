@@ -47,6 +47,7 @@ public class GroupVideoCallActivity extends AppCompatActivity implements
     private boolean isMuted = false;
     private boolean isSpeaker = true;
     private boolean isInbound = false;
+    private boolean isCallAccepted = false; // Tracks whether the inbound call has been picked up
     private long callStartTime = 0;
 
     private int callDurationSeconds = 0;
@@ -91,6 +92,11 @@ public class GroupVideoCallActivity extends AppCompatActivity implements
         audioCaptureManager = AudioCaptureManager.getInstance(this);
 
         isInbound = getIntent().getBooleanExtra("IS_INBOUND", false);
+        if (isInbound) {
+            isCallAccepted = false;
+        } else {
+            isCallAccepted = true;
+        }
 
         initializeProxyStreams();
         setupLocalUserCell();
@@ -204,11 +210,24 @@ public class GroupVideoCallActivity extends AppCompatActivity implements
 
     private void setupClickListeners() {
         binding.fabGroupMute.setOnClickListener(v -> {
-            isMuted = !isMuted;
-            WifeLogger.log(TAG, "Toggled mic state: Mute = " + isMuted);
-            binding.fabGroupMute.setImageResource(isMuted ? 
-                    android.R.drawable.ic_lock_silent_mode : android.R.drawable.ic_btn_speak_now);
-            Toast.makeText(this, isMuted ? "Microphone muted" : "Microphone active", Toast.LENGTH_SHORT).show();
+            if (isInbound && !isCallAccepted) {
+                // Symmetrical Pick Up trigger logic: Accept call and setup media controls
+                isCallAccepted = true;
+                acceptCall();
+                
+                // Return button to default theme, restore mic icon, and show control panel
+                binding.fabGroupMute.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xAA121212));
+                binding.fabGroupMute.setImageResource(android.R.drawable.ic_btn_speak_now);
+                binding.fabGroupSwitchCamera.setVisibility(View.VISIBLE);
+                binding.fabGroupSpeaker.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "Group Call Connected", Toast.LENGTH_SHORT).show();
+            } else {
+                isMuted = !isMuted;
+                WifeLogger.log(TAG, "Toggled mic state: Mute = " + isMuted);
+                binding.fabGroupMute.setImageResource(isMuted ? 
+                        android.R.drawable.ic_lock_silent_mode : android.R.drawable.ic_btn_speak_now);
+                Toast.makeText(this, isMuted ? "Microphone muted" : "Microphone active", Toast.LENGTH_SHORT).show();
+            }
         });
 
         binding.fabGroupSwitchCamera.setOnClickListener(v -> {
@@ -238,8 +257,14 @@ public class GroupVideoCallActivity extends AppCompatActivity implements
         if (isInbound) {
             WifeLogger.log(TAG, "Group Call State configured as: INBOUND.");
             binding.tvGroupCallState.setText("Inbound Group Request...");
-            // Receiver accepts the incoming UDP broadcast pipeline immediately
-            acceptCall();
+            
+            // Stylize mute button as green "Accept Call" FAB during ringing state
+            binding.fabGroupMute.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF4CAF50));
+            binding.fabGroupMute.setImageResource(android.R.drawable.sym_action_call);
+            
+            // Symmetrical hide of camera lens flip and speaker toggle during ringing
+            binding.fabGroupSwitchCamera.setVisibility(View.GONE);
+            binding.fabGroupSpeaker.setVisibility(View.GONE);
         } else {
             WifeLogger.log(TAG, "Group Call State configured as: OUTBOUND. Broadcasting invitations...");
             binding.tvGroupCallState.setText("Inviting peers...");
@@ -327,6 +352,17 @@ public class GroupVideoCallActivity extends AppCompatActivity implements
     private void updateVideoGrid() {
         int count = binding.gridLayoutVideo.getChildCount();
         if (count == 0) return;
+
+        // Reset the specs first of all child layouts before column/row updates to prevent crash exception
+        for (int i = 0; i < count; i++) {
+            View child = binding.gridLayoutVideo.getChildAt(i);
+            GridLayout.LayoutParams params = (GridLayout.LayoutParams) child.getLayoutParams();
+            if (params != null) {
+                params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED);
+                params.rowSpec = GridLayout.spec(GridLayout.UNDEFINED);
+                child.setLayoutParams(params);
+            }
+        }
 
         // Configuration splits:
         // 1-2 elements: 1 column
